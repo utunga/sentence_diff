@@ -1,4 +1,4 @@
-# sentence_diff
+# Sentence Differences - sentence_diff
 Package to difference English sentences via Liechtenstein distance, calculate word error rate, and list out word by word differences
 
 # Basic usage
