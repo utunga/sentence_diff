@@ -170,8 +170,9 @@ class SentenceDiff:
         self.matched = match
 
     def _tokenize(self, sentence):
-        normalized_lower = self._normalize(sentence)
-        words = normalized_lower.lower().split()
+        normalized_lower = self._normalize(sentence).lower()
+        normalized_lower = SentenceDiff._decontracted(normalized_lower)
+        words = normalized_lower.split()
         words = self._spell_out_numbers(words)
         return words
 
@@ -209,5 +210,36 @@ class SentenceDiff:
 
     @staticmethod
     def _remove_punctuation(text):
+        text = SentenceDiff._sound_out_dollars(text)
         return text.translate(str.maketrans('', '', string.punctuation))
+
+    @staticmethod
+    def _sound_out_dollars(text):
+        text = re.sub(r"\$1\b", "1 dollar", text)
+        _subst = "\\2 dollars"
+        _regex = r"(\$)(\d*)\b"
+        return re.sub(_regex, _subst, text)
+
+    @staticmethod
+    def _decontracted(text):
+        # specific
+        text = re.sub(r"mr", "mister", text)
+        text = re.sub(r"ms", "miss", text)
+        text = re.sub(r"mrs", "mrs", text)
+        text = re.sub(r"dr", "doctor", text)
+
+        # specific
+        text = re.sub(r"won\'t", "will not", text)
+        text = re.sub(r"can\'t", "can not", text)
+
+        # general
+        text = re.sub(r"n\'t", " not", text)
+        text = re.sub(r"\'re", " are", text)
+        text = re.sub(r"\'s", " is", text)
+        text = re.sub(r"\'d", " would", text)
+        text = re.sub(r"\'ll", " will", text)
+        text = re.sub(r"\'t", " not", text)
+        text = re.sub(r"\'ve", " have", text)
+        text = re.sub(r"\'m", " am", text)
+        return text
 

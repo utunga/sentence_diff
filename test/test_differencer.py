@@ -86,3 +86,32 @@ class TestDifferencer(TestCase):
         ('of', None, 5, 'added'),
         ('bread', None, 6, 'added'),
         ('please', 'please', 7, None)]
+
+    def test_ex_miss_mary(self):
+        d = diff("Nice to meet you Miss Mary.", "nice to meet you, Ms Mary!")
+        print(d.mistakes())
+        assert d.wer() == 0
+
+    def test_ex_wow_100(self):
+        d = diff("Wow, $100?", "wow, 100 dollars")
+        print(d.mistakes())
+        assert d.wer() == 0
+
+    def test_normalize_100_dollars(self):
+        d = SentenceDiff("xx","xx")
+        assert d._normalize("$100") == "100 dollars"
+
+    def test_normalize_1_dollar(self):
+        d = SentenceDiff("xx","xx")
+        assert d._normalize("here is $1 for you") == "here is 1 dollar for you"
+
+    #id like to be able to 'handle' these cases also but i cant just now
+    #
+    # def test_ex_silverware(self):
+    #     d = diff("silverware", "silver ware")
+    #     assert d.wer() == 0
+    #
+    # def test_ex_dog_house(self):
+    #     d = diff("dog house", "doghouse")
+    #     print(d.mistakes())
+    #     assert d.wer() == 0
