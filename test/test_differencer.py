@@ -183,3 +183,8 @@ class TestDifferencer(TestCase):
         d = diff(actual, target)
         print(d.scored_words())
         assert d.chatterize_score() == 0.6
+
+    def test_profanity(self):
+        d = diff("two fucking loaves", "two more loaves")
+        assert d.mistakes() == [
+        ("xxxx", 'more', 1, 'changed')]
