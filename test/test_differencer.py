@@ -1,9 +1,14 @@
 from unittest import TestCase
-
 from sentence_diff import SentenceDiff
+
+
 
 def diff(actual_sentence, target_sentence):
     return SentenceDiff(actual_sentence=actual_sentence, target_sentence=target_sentence)
+
+def chatterize_score(actual_sentence, target_sentence):
+    diff = SentenceDiff(actual_sentence, target_sentence)
+    return diff.chatterize_score()
 
 class TestDifferencer(TestCase):
 
@@ -28,15 +33,15 @@ class TestDifferencer(TestCase):
     def test_words_skipped(self):
         d = diff("How see you", "how good to see you")
         assert d.mistakes() == [
-        (None, "good", 1, 'skipped'), 
+        (None, "good", 1, 'skipped'),
         (None, "to", 1, 'skipped')]
 
     def test_combined(self):
         d = diff("can i has 7 loaves of bread please ", "Can I have seven loaves, please?")
-        assert d.mistakes() == [
-        ('has', 'have', 2, 'changed'),
-        ('of', None, 5, 'added'),
-        ('bread', None, 6, 'added')]
+        assert d.mistakes() == \
+            [('has', 'have', 2, 'changed'),
+            ('of', None, 5, 'added'),
+            ('bread', None, 6, 'added')]
 
     def test_no_mistakes(self):
         d = diff("my name is leaf", "My name is leaf!")
@@ -44,10 +49,11 @@ class TestDifferencer(TestCase):
 
     def test_yes_no_words(self):
         d = diff("How about a good bath", "Would you like a good bath?")
+        print(d.scored_words())
         assert d.yes_no_words() == [
         ("How", False),
         ("about", False),
-        ("a", True),
+        ("a", False),
         ("good", True),
         ("bath", True)]
 
@@ -76,16 +82,16 @@ class TestDifferencer(TestCase):
         ('27', 'six', 3, 'changed')]
       
     def test_scored_words(self):
-        d = diff("can i has 7 loaves of bread please ", "Can I have seven loaves, please?")
+        d = diff("can i has 7 Loaves of bread please ", "Can I have seven Loaves, please?")
         assert d.scored_words() == [
         ('can', 'Can', 0, None),
         ('i', 'I', 1, None),
         ('has', 'have', 2, 'changed'),
         ('7', 'seven', 3, None),
-        ('loaves', 'loaves', 4, None),
+        ('Loaves', 'Loaves,', 4, None),
         ('of', None, 5, 'added'),
         ('bread', None, 6, 'added'),
-        ('please', 'please', 7, None)]
+        ('please', 'please?', 7, None)]
 
     def test_ex_miss_mary(self):
         d = diff("Nice to meet you Miss Mary.", "nice to meet you, Ms Mary!")
@@ -93,7 +99,17 @@ class TestDifferencer(TestCase):
         assert d.wer() == 0
 
     def test_ex_wow_100(self):
-        d = diff("Wow, $100?", "wow, 100 dollars")
+        d = diff("wow, 100 dollars", "Wow, $100?")
+        print(d.mistakes())
+        assert d.wer() == 0
+
+    def test_backtrace_ex(self):
+        d = diff("Hi.", "hello tim my name is scott")
+        #print(d.mistakes())
+        assert d.wer() == 1
+
+    def test_backtrace_ex2(self):
+        d = diff("let's climb the rockwall","Let's climb the rock wall.")
         print(d.mistakes())
         assert d.wer() == 0
 
@@ -105,13 +121,65 @@ class TestDifferencer(TestCase):
         d = SentenceDiff("xx","xx")
         assert d._normalize("here is $1 for you") == "here is 1 dollar for you"
 
-    #id like to be able to 'handle' these cases also but i cant just now
-    #
-    # def test_ex_silverware(self):
-    #     d = diff("silverware", "silver ware")
-    #     assert d.wer() == 0
-    #
-    # def test_ex_dog_house(self):
-    #     d = diff("dog house", "doghouse")
-    #     print(d.mistakes())
-    #     assert d.wer() == 0
+    def test_ex_silverware(self):
+        d = diff(actual_sentence="i need silver ware", target_sentence="I need silverware.")
+        assert d.wer() == 0
+
+    def test_ex_dog_house(self):
+        d = diff("hawaii tim", "Hi Tim.")
+        assert d.wer() == 0
+
+    def test_ex_miss_mary(self):
+        d = diff("hi miss mary", "Hi Ms. Mary!")
+        assert d.wer() == 0
+
+    def test_chatterize_score_fail(self):
+        score = chatterize_score("how you gorger hydra","I am a girl.")
+        assert score == 0
+
+    def test_chatterize_score_pass(self):
+        score = chatterize_score("i want corn please","I want corn, please.")
+        assert score == 1
+
+    def test_chatterize_score_dont_drop_apostrophe(self):
+        score = chatterize_score("You're welcome","You're welcome")
+        assert score == 1
+        d = diff("You're welcome","You're welcome")
+        scored = d.scored_words()
+        assert scored[0][0] == "You're"
+
+    def test_chatterize_score_dont_mess_up_lets(self):
+        score = chatterize_score("Let's pretend we're pirates.", "Let's pretend we're pirates.")
+        assert score == 1
+        d = diff("Let's pretend we're pirates.", "Let's pretend we're pirates.")
+        scored = d.scored_words()
+        print(scored)
+        assert scored[0][0] == "Let's"
+
+    def test_chatterize_score_partial_word(self):
+        score = chatterize_score("I like superheroes.", "i like superhero")
+        assert score == 0.9166666666666666
+
+    def test_chatterize_score_partial_word_round_up(self):
+        score = chatterize_score("superhero", "superheros")
+        assert score == 0.9
+
+    def test_complex_backtrace_ex(self):
+        actual = "Do you want to have a sleepover?"
+        target = "want to have a sleep over you want to have a sleepover"
+        d = diff(actual, target)
+        print(d.scored_words())
+        assert d.chatterize_score() == 0.4708333333333334
+
+    def test_complex_backtrace_ex_2(self):
+        actual = "where i like to dress as a superhero"
+        target = "I like to dress as a superhero."
+        d = diff(actual, target)
+        assert d.chatterize_score() == 0.8
+
+    def test_complex_backtrace_ex_test(self):
+        actual = "x a b"
+        target = "a b c a b"
+        d = diff(actual, target)
+        print(d.scored_words())
+        assert d.chatterize_score() == 0.6
