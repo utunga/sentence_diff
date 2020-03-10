@@ -3,6 +3,7 @@ import string
 import numpy as np
 import inflect
 import difflib
+from better_profanity import profanity
 
 class SentenceDiff:
 
@@ -188,13 +189,15 @@ class SentenceDiff:
 
     def _normalize(self, text):
         return \
-            SentenceDiff._chatterize_subs(
-                self._remove_punctuation(
-                    SentenceDiff._sound_out_dollars(text)))
+            self._remove_punctuation(
+                SentenceDiff._chatterize_subs(
+                    SentenceDiff._sound_out_dollars(
+                        profanity.censor(text, 'x'))))
 
     def _get_orig_words(self, text):
         text = SentenceDiff._chatterize_subs(
-                SentenceDiff._sound_out_dollars(text))
+                SentenceDiff._sound_out_dollars(
+                    profanity.censor(text, 'x')))
         words = str(text).strip().split()
         return [word for word in words if len(self._remove_punctuation(word).strip())>0]
 
