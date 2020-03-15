@@ -188,3 +188,14 @@ class TestDifferencer(TestCase):
         d = diff("two fucking loaves", "two more loaves")
         assert d.mistakes() == [
         ("xxxx", 'more', 1, 'changed')]
+
+    def test_i_want_water(self):
+        actual = "I want water, please"
+        target = "I want please"
+        d = diff(actual, target)
+        assert d.yes_no_words() ==[
+            ('I', True), 
+            ('want', True), 
+            ('water,', False), 
+            ('please', True)]
+        assert d.chatterize_score() == .75
