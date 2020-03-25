@@ -8,7 +8,7 @@ from better_profanity import profanity
 class SentenceDiff:
 
     def __init__(self, actual_sentence, target_sentence):
-        self.__assert_not_empty(actual_sentence,target_sentence)
+        self._assert_not_empty(actual_sentence, target_sentence)
         
         # lowercase, normalize, tokenize
         self.actual = self._tokenize(actual_sentence)
@@ -41,6 +41,32 @@ class SentenceDiff:
             if scored[0]:
                 res.append((scored[0], scored[3] is None))
         return res
+
+    def chatterize_score(self):
+        wer1, matrix1 = self._do_compare(self.actual, self.target)
+        wer2, matrix2 = self._do_compare(self.target, self.actual)
+        if wer1 <= wer2:
+            scored_words, alignment = \
+                self._do_backtrace(self.actual, self.target, matrix1, self.actual_words, self.target_words)
+        else:
+            scored_words, alignment = \
+                self._do_backtrace(self.target, self.actual, matrix2, self.target_words, self.actual_words)
+
+        cost = 0
+        word_count = 0
+        for tuple in scored_words:
+            word_count += 1
+            actual = SentenceDiff._remove_punctuation(tuple[0])
+            target = SentenceDiff._remove_punctuation(tuple[1])
+            action = tuple[3]
+            if action is None:
+                cost += 0  # correct
+            elif action== 'changed':
+                cost += SentenceDiff._word_diff_cost(tuple[0], tuple[1])  # substitution cost
+            else:
+                cost += SentenceDiff._word_add_rm_cost(tuple[0], tuple[1])  # substitution cost
+
+        return (word_count - cost) / word_count
 
     def print_debug(self):
         self._compare()
@@ -201,34 +227,8 @@ class SentenceDiff:
         words = str(text).strip().split()
         return [word for word in words if len(self._remove_punctuation(word).strip())>0]
 
-    def chatterize_score(self):
-        wer1, matrix1 = self._do_compare(self.actual, self.target)
-        wer2, matrix2 = self._do_compare(self.target, self.actual)
-        if wer1 <= wer2:
-            scored_words, alignment = \
-                self._do_backtrace(self.actual, self.target, matrix1, self.actual_words, self.target_words)
-        else:
-            scored_words, alignment = \
-                self._do_backtrace(self.target, self.actual, matrix2, self.target_words, self.actual_words)
-
-        cost = 0
-        word_count = 0
-        for tuple in scored_words:
-            word_count += 1
-            actual = SentenceDiff._remove_punctuation(tuple[0])
-            target = SentenceDiff._remove_punctuation(tuple[1])
-            action = tuple[3]
-            if action is None:
-                cost += 0  # correct
-            elif action== 'changed':
-                cost += SentenceDiff._word_diff_cost(tuple[0], tuple[1])  # substitution cost
-            else:
-                cost += SentenceDiff._word_add_rm_cost(tuple[0], tuple[1])  # substitution cost
-
-        return (word_count - cost) / word_count
-
     @staticmethod
-    def __assert_not_empty(actual_sentence, target_sentence):
+    def _assert_not_empty(actual_sentence, target_sentence):
         assert target_sentence is not None
         assert actual_sentence is not None
         t = len(target_sentence)
@@ -247,6 +247,14 @@ class SentenceDiff:
             else:
                 result.append(word)
         return result
+
+    @staticmethod
+    def _spell_out_numbers_in_word(word):
+        if SentenceDiff._check_int(word):
+            p = inflect.engine()
+            return p.number_to_words(int(word))
+        else:
+            return word
 
     @staticmethod
     def _check_int(s):
