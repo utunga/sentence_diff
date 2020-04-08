@@ -314,6 +314,8 @@ class SentenceDiff:
         text = re.sub("hawaii team", "hi tim", text, flags=re.IGNORECASE)
         text = re.sub("hi team", "hi tim", text, flags=re.IGNORECASE)
         text = re.sub("hawaii", "hi", text, flags=re.IGNORECASE)
+
+        text = re.sub("meet", "meat", text, flags=re.IGNORECASE)
         return text
 
     @staticmethod
