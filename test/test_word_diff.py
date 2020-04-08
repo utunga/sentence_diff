@@ -35,6 +35,14 @@ class TestDifferencer(TestCase):
         assert score == .8181818181818181
         assert pass_fail == "SUPER PASS"
 
+    def test_meat(self):
+        target = "meat"
+        actual = "meet"
+        pass_fail, score = diff(actual, target)
+        assert score == 1
+        assert pass_fail == "SUPER PASS"
+
+
     def test_shirt(self):
         target = "shirt"
         actual = "sharks"
