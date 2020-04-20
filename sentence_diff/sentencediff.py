@@ -3,7 +3,10 @@ import string
 import numpy as np
 import inflect
 import difflib
+import itertools
+import functools
 from better_profanity import profanity
+
 
 class SentenceDiff:
 
@@ -11,12 +14,13 @@ class SentenceDiff:
         self._assert_not_empty(actual_sentence, target_sentence)
         
         # lowercase, normalize, tokenize
+        self.actual_sentence = actual_sentence
         self.actual = self._tokenize(actual_sentence)
         self.target = self._tokenize(target_sentence)
 
         # split words without lower casing
-        self.actual_words = self._get_orig_words(actual_sentence)
-        self.target_words = self._get_orig_words(target_sentence)
+        self.actual_words = self._tokenize_for_end_user(actual_sentence)
+        self.target_words = self._tokenize_for_end_user(target_sentence)
 
     # public methods 
     def wer(self):
@@ -43,14 +47,41 @@ class SentenceDiff:
         return res
 
     def chatterize_score(self):
-        wer1, matrix1 = self._do_compare(self.actual, self.target)
-        wer2, matrix2 = self._do_compare(self.target, self.actual)
+
+        actual_homonyms = SentenceDiff._homonyms(self.actual_sentence)
+
+        wer1 = 99
+        matrix1 = None
+        actual_tokenized1 = None
+        actual_words1 = None
+        for tmp_actual in actual_homonyms:
+            tmp_actual_tokenized = self._tokenize(tmp_actual)
+            tmp_wer, tmp_matrix = self._do_compare(tmp_actual_tokenized, self.target)
+            if tmp_wer < wer1:
+                wer1 = tmp_wer
+                matrix1 = tmp_matrix
+                actual_tokenized1 = tmp_actual_tokenized
+                actual_words1 = self._tokenize_for_end_user(tmp_actual)
+
+        wer2 = 99
+        matrix2 = None
+        actual_tokenized2 = None
+        actual_words2 = None
+        for tmp_actual in actual_homonyms:
+            tmp_actual_tokenized = self._tokenize(tmp_actual)
+            tmp_wer, tmp_matrix = self._do_compare(self.target, tmp_actual_tokenized)
+            if tmp_wer < wer2:
+                wer2 = tmp_wer
+                matrix2 = tmp_matrix
+                actual_tokenized2 = tmp_actual_tokenized
+                actual_words2 = self._tokenize_for_end_user(tmp_actual)
+
         if wer1 <= wer2:
             scored_words, alignment = \
-                self._do_backtrace(self.actual, self.target, matrix1, self.actual_words, self.target_words)
+                self._do_backtrace(actual_tokenized1, self.target, matrix1, actual_words1, self.target_words)
         else:
             scored_words, alignment = \
-                self._do_backtrace(self.target, self.actual, matrix2, self.target_words, self.actual_words)
+                self._do_backtrace(self.target, actual_tokenized2, matrix2, self.target_words, actual_words2)
 
         cost = 0
         word_count = 0
@@ -213,19 +244,19 @@ class SentenceDiff:
         words = self._spell_out_numbers(words)
         return words
 
+    def _tokenize_for_end_user(self, text):
+        text = SentenceDiff._chatterize_subs(
+                SentenceDiff._sound_out_dollars(
+                    profanity.censor(text, 'x')))
+        words = str(text).strip().split()
+        return [word for word in words if len(self._remove_punctuation(word).strip())>0]
+
     def _normalize(self, text):
         return \
             self._remove_punctuation(
                 SentenceDiff._chatterize_subs(
                     SentenceDiff._sound_out_dollars(
                         profanity.censor(text, 'x'))))
-
-    def _get_orig_words(self, text):
-        text = SentenceDiff._chatterize_subs(
-                SentenceDiff._sound_out_dollars(
-                    profanity.censor(text, 'x')))
-        words = str(text).strip().split()
-        return [word for word in words if len(self._remove_punctuation(word).strip())>0]
 
     @staticmethod
     def _assert_not_empty(actual_sentence, target_sentence):
@@ -304,18 +335,18 @@ class SentenceDiff:
         # text = re.sub(r"\'m", " am", text)
 
         #chatterize specific subs
-        text = re.sub("two embarrassing", "too embarrassing", text, flags=re.IGNORECASE)
-        text = re.sub("silver ware", "silverware", text, flags=re.IGNORECASE)
-        text = re.sub("mah jong", "majong", text, flags=re.IGNORECASE)
-        text = re.sub("rockwall", "rock wall", text, flags=re.IGNORECASE)
-        text = re.sub("chickensoup", "chicken soup", text, flags=re.IGNORECASE)
-        text = re.sub("tomatosoup", "tomato soup", text, flags=re.IGNORECASE)
-
-        text = re.sub("hawaii team", "hi tim", text, flags=re.IGNORECASE)
-        text = re.sub("hi team", "hi tim", text, flags=re.IGNORECASE)
-        text = re.sub("hawaii", "hi", text, flags=re.IGNORECASE)
-
-        text = re.sub("meet", "meat", text, flags=re.IGNORECASE)
+        # text = re.sub("two embarrassing", "too embarrassing", text, flags=re.IGNORECASE)
+        # text = re.sub("silver ware", "silverware", text, flags=re.IGNORECASE)
+        # text = re.sub("mah jong", "majong", text, flags=re.IGNORECASE)
+        # text = re.sub("rockwall", "rock wall", text, flags=re.IGNORECASE)
+        # text = re.sub("chickensoup", "chicken soup", text, flags=re.IGNORECASE)
+        # text = re.sub("tomatosoup", "tomato soup", text, flags=re.IGNORECASE)
+        #
+        # text = re.sub("hawaii team", "hi tim", text, flags=re.IGNORECASE)
+        # text = re.sub("hi team", "hi tim", text, flags=re.IGNORECASE)
+        # text = re.sub("hawaii", "hi", text, flags=re.IGNORECASE)
+        #
+        # text = re.sub("meet", "meat", text, flags=re.IGNORECASE)
         return text
 
     @staticmethod
@@ -345,3 +376,68 @@ class SentenceDiff:
         else:
             return 1
 
+    @staticmethod
+    def _all_substitutions(list_of_lists):
+        rslt = []
+        for lst in list_of_lists:
+            for pair in itertools.permutations(lst, 2):
+                rslt.append(pair)
+        return rslt
+
+    @staticmethod
+    @functools.lru_cache()
+    def _homonyms(sentence):
+        result = [sentence]
+        for pair in SentenceDiff._all_word_subs():
+            test_sentence = sentence.replace(pair[0], pair[1])
+            if test_sentence != sentence:
+                result.append(test_sentence)
+        return result
+
+    @staticmethod
+    @functools.lru_cache(maxsize=None)
+    def _all_word_subs():
+        return SentenceDiff._all_substitutions(
+                SentenceDiff._all_word_homonyms())
+
+    @staticmethod
+    @functools.lru_cache(maxsize=None)
+    def _all_word_homonyms():
+        return \
+        [["there", "their", "they’re"],
+         ["see", "sea"],
+         ["for", "four"],
+         ["by", "buy"],
+         ["passed", "past"],
+         ["which", "witch"],
+         ["son", "sun"],
+         ["who’s", "whose"],
+         ["hole", "whole"],
+         ["write", "right"],
+         ["to", "too", "two"],
+         ["threw", "through"],
+         ["cereal", "serial"],
+         ["desert", "dessert"],
+         ["meat", "meet"],
+         ["flower", "flour"],
+         ["cooking", "cookin"],
+         ["jumping", "jumpin"],
+         ["principal", "principle"],
+         ["blue bell", "bluebell"],
+         ["talk town", "talktown"],
+         ["silverware", "silver ware"],
+         ["majong", "mah jong"],
+         ["rock wall", "rockwall"],
+         ["chicken soup", "chickensoup"],
+         ["tomato soup", "tomatosoup"],
+         ["hi tim", "hawaii team"],
+         ["hi tim", "hi team"],
+         ["hi", "hawaii"],
+         ["hi tim", "hawaii team"],
+         ["hi tim", "hi team"],
+         ["hi", "hawaii"],
+         ["mr", "mister"],
+         ["ms", "miss"],
+         ["mrs", "mrs"],
+         ["dr", "doctor"]
+         ]
