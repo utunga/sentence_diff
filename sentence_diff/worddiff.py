@@ -19,19 +19,25 @@ class WordDiff:
         self.target_lower = self.normalize(target)
 
     def chatterize_score(self):
-        similarity = self.similarity(self.actual_lower, self.target_lower)
-        pass_fail = "SUPER PASS" if similarity > THRESHOLD_SUPER_PASS \
-                    else "PASS" if similarity > THRESHOLD_PASS \
+        homonyms = SentenceDiff._homonyms(self.actual_lower)
+        max_similarity = -1
+        for homonym in homonyms:
+            similarity = self.similarity(homonym, self.target_lower)
+            if similarity > max_similarity:
+                max_similarity = similarity
+
+        pass_fail = "SUPER PASS" if max_similarity > THRESHOLD_SUPER_PASS \
+                    else "PASS" if max_similarity > THRESHOLD_PASS \
                     else "FAIL"
-        return pass_fail, similarity
+
+        return pass_fail, max_similarity
 
     def normalize(self, text):
         return \
             SentenceDiff._remove_punctuation(
-                SentenceDiff._single_word_sub(
                     SentenceDiff._spell_out_numbers_in_word(
                         SentenceDiff._sound_out_dollars(
-                            profanity.censor(text.lower(), 'x')))))
+                            profanity.censor(text.lower(), 'x'))))
 
     def similarity(self, wordA, wordB):
         # work substitution cost
