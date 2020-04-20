@@ -100,9 +100,8 @@ class TestDifferencer(TestCase):
         ('please', 'please?', 7, None)]
 
     def test_ex_miss_mary(self):
-        d = diff("Nice to meet you Miss Mary.", "nice to meet you, Ms Mary!")
-        print(d.mistakes())
-        assert d.wer() == 0
+        d = chatterize_score("Nice to meet you Miss Mary.", "nice to meet you, Ms Mary!")
+        assert d == 1
 
     def test_ex_meet_at_church(self):
         d = chatterize_score("Let's meat at the church.", "lets meet at the church")
@@ -245,3 +244,6 @@ class TestDifferencer(TestCase):
 
     def test_hi_sally(self):
         assert_chatterize_score("hi sally", "Hi, Sally", 1)
+
+    def test_by_bob(self):
+        assert_chatterize_score("by bob", "Bye, Bob", 1)

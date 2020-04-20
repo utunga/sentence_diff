@@ -245,18 +245,16 @@ class SentenceDiff:
         return words
 
     def _tokenize_for_end_user(self, text):
-        text = SentenceDiff._chatterize_subs(
-                SentenceDiff._sound_out_dollars(
-                    profanity.censor(text, 'x')))
+        text = SentenceDiff._sound_out_dollars(
+                    profanity.censor(text, 'x'))
         words = str(text).strip().split()
         return [word for word in words if len(self._remove_punctuation(word).strip())>0]
 
     def _normalize(self, text):
         return \
             self._remove_punctuation(
-                SentenceDiff._chatterize_subs(
-                    SentenceDiff._sound_out_dollars(
-                        profanity.censor(text, 'x'))))
+                SentenceDiff._sound_out_dollars(
+                    profanity.censor(text, 'x')))
 
     @staticmethod
     def _assert_not_empty(actual_sentence, target_sentence):
@@ -319,36 +317,6 @@ class SentenceDiff:
         word = re.sub(r"dr", "doctor", word, flags=re.IGNORECASE)
         return word
 
-    def _chatterize_subs(text):
-        # specific
-        text = re.sub(r"won\'t", "will not", text, flags=re.IGNORECASE)
-        text = re.sub(r"can\'t", "can not", text, flags=re.IGNORECASE)
-
-        # # general
-        # text = re.sub(r"n\'t", " not", text)
-        # text = re.sub(r"\'re", " are", text)
-        # text = re.sub(r"\'s", " is", text)
-        # text = re.sub(r"\'d", " would", text)
-        # text = re.sub(r"\'ll", " will", text)
-        # text = re.sub(r"\'t", " not", text)
-        # text = re.sub(r"\'ve", " have", text)
-        # text = re.sub(r"\'m", " am", text)
-
-        #chatterize specific subs
-        # text = re.sub("two embarrassing", "too embarrassing", text, flags=re.IGNORECASE)
-        # text = re.sub("silver ware", "silverware", text, flags=re.IGNORECASE)
-        # text = re.sub("mah jong", "majong", text, flags=re.IGNORECASE)
-        # text = re.sub("rockwall", "rock wall", text, flags=re.IGNORECASE)
-        # text = re.sub("chickensoup", "chicken soup", text, flags=re.IGNORECASE)
-        # text = re.sub("tomatosoup", "tomato soup", text, flags=re.IGNORECASE)
-        #
-        # text = re.sub("hawaii team", "hi tim", text, flags=re.IGNORECASE)
-        # text = re.sub("hi team", "hi tim", text, flags=re.IGNORECASE)
-        # text = re.sub("hawaii", "hi", text, flags=re.IGNORECASE)
-        #
-        # text = re.sub("meet", "meat", text, flags=re.IGNORECASE)
-        return text
-
     @staticmethod
     def _word_diff_cost(wordA, wordB):
         #substitution cost, similar words cost close to 0 different words cost 1
@@ -407,7 +375,7 @@ class SentenceDiff:
         [["there", "their", "they’re"],
          ["see", "sea"],
          ["for", "four"],
-         ["by", "buy"],
+         ["by", "buy", "bye"],
          ["passed", "past"],
          ["which", "witch"],
          ["son", "sun"],
@@ -435,9 +403,5 @@ class SentenceDiff:
          ["hi", "hawaii"],
          ["hi tim", "hawaii team"],
          ["hi tim", "hi team"],
-         ["hi", "hawaii"],
-         ["mr", "mister"],
-         ["ms", "miss"],
-         ["mrs", "mrs"],
-         ["dr", "doctor"]
+         ["hi", "hawaii"]
          ]
