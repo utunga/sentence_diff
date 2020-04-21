@@ -73,6 +73,16 @@ class TestDifferencer(TestCase):
         ("loaves", True),
         ("please", True)]
 
+    def test_yes_no_numbers_with_homonym(self):
+        d = diff("can i has for loaves please", "Can I have 4 loaves, please?")
+        assert d.yes_no_words() == [
+            ("can", True),
+            ("i", True),
+            ("has", False),
+            ("four", True),
+            ("loaves", True),
+            ("please", True)]
+
     def test_numbers_mistake(self):
         d = diff("can i have 62 loaves please", "Can I have seven loaves, please?")
         assert d.mistakes() == [
@@ -98,6 +108,15 @@ class TestDifferencer(TestCase):
         ('of', None, 5, 'added'),
         ('bread', None, 6, 'added'),
         ('please', 'please?', 7, None)]
+
+    def test_scored_word_homonyms(self):
+        d = diff("chickens give meet", "Chickens give us meat.")
+        #print(d.scored_words())
+        assert d.scored_words() ==[
+            ('chickens', 'Chickens', 0, None),
+            ('give', 'give', 1, None),
+            (None, 'us', 2, 'skipped'),
+            ('meat', 'meat.', 2, None)]
 
     def test_ex_miss_mary(self):
         d = chatterize_score("Nice to meet you Miss Mary.", "nice to meet you, Ms Mary!")

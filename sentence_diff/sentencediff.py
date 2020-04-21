@@ -15,8 +15,8 @@ class SentenceDiff:
         
         # lowercase, normalize, tokenize
         self.actual_sentence = actual_sentence
-        self.actual = self._tokenize(actual_sentence)
-        self.target = self._tokenize(target_sentence)
+        self.actual_tokenized = self._tokenize(actual_sentence)
+        self.target_tokenized = self._tokenize(target_sentence)
 
         # split words without lower casing
         self.actual_words = self._tokenize_for_end_user(actual_sentence)
@@ -56,7 +56,7 @@ class SentenceDiff:
         actual_words1 = None
         for tmp_actual in actual_homonyms:
             tmp_actual_tokenized = self._tokenize(tmp_actual)
-            tmp_wer, tmp_matrix = self._do_compare(tmp_actual_tokenized, self.target)
+            tmp_wer, tmp_matrix = self._do_compare(tmp_actual_tokenized, self.target_tokenized)
             if tmp_wer < wer1:
                 wer1 = tmp_wer
                 matrix1 = tmp_matrix
@@ -69,7 +69,7 @@ class SentenceDiff:
         actual_words2 = None
         for tmp_actual in actual_homonyms:
             tmp_actual_tokenized = self._tokenize(tmp_actual)
-            tmp_wer, tmp_matrix = self._do_compare(self.target, tmp_actual_tokenized)
+            tmp_wer, tmp_matrix = self._do_compare(self.target_tokenized, tmp_actual_tokenized)
             if tmp_wer < wer2:
                 wer2 = tmp_wer
                 matrix2 = tmp_matrix
@@ -78,10 +78,10 @@ class SentenceDiff:
 
         if wer1 <= wer2:
             scored_words, alignment = \
-                self._do_backtrace(actual_tokenized1, self.target, matrix1, actual_words1, self.target_words)
+                self._do_backtrace(actual_tokenized1, self.target_tokenized, matrix1, actual_words1, self.target_words)
         else:
             scored_words, alignment = \
-                self._do_backtrace(self.target, actual_tokenized2, matrix2, self.target_words, actual_words2)
+                self._do_backtrace(self.target_tokenized, actual_tokenized2, matrix2, self.target_words, actual_words2)
 
         cost = 0
         word_count = 0
@@ -103,9 +103,9 @@ class SentenceDiff:
         self._compare()
         self._backtrace()
         print("actual")
-        print(self.actual)
+        print(self.actual_tokenized)
         print("target")
-        print(self.target)
+        print(self.target_tokenized)
         print("wer")
         print(self.error)
         # print(self.matrix)
@@ -126,8 +126,25 @@ class SentenceDiff:
         matrix[:, 0] = np.arange(shape[0])
         return matrix
 
+    def _find_best_actual_homonyms(self):
+        homonyms = SentenceDiff._homonyms(self.actual_sentence)
+        wer1 = 999
+        actual_tokenized = None
+        actual_words = None
+        for tmp in homonyms:
+            tmp_tokenized = self._tokenize(tmp)
+            tmp_wer, tmp_matrix = self._do_compare(tmp_tokenized, self.target_tokenized)
+            if tmp_wer < wer1:
+                wer1 = tmp_wer
+                actual_words = self._tokenize_for_end_user(tmp)
+                actual_tokenized = tmp_tokenized
+        self.actual_tokenized = actual_tokenized
+        self.actual_words = actual_words
+
+
     def _compare(self):
-        wer, matrix = self._do_compare(self.actual, self.target)
+        self._find_best_actual_homonyms()
+        wer, matrix = self._do_compare(self.actual_tokenized, self.target_tokenized)
         self.error = wer
         self.matrix = matrix
 
@@ -233,7 +250,7 @@ class SentenceDiff:
 
     def _backtrace(self):
         scored_words, alignment =\
-            self._do_backtrace(self.actual, self.target, self.matrix, self.actual_words, self.target_words)
+            self._do_backtrace(self.actual_tokenized, self.target_tokenized, self.matrix, self.actual_words, self.target_words)
         self.scored_words = scored_words
         self.alignment = alignment
 
@@ -374,7 +391,7 @@ class SentenceDiff:
         return \
         [["there", "their", "they’re"],
          ["see", "sea"],
-         ["for", "four"],
+         ["for", "four", "4"],
          ["by", "buy", "bye"],
          ["passed", "past"],
          ["which", "witch"],
@@ -382,7 +399,7 @@ class SentenceDiff:
          ["who’s", "whose"],
          ["hole", "whole"],
          ["write", "right"],
-         ["to", "too", "two"],
+         ["to", "too", "two", "2"],
          ["threw", "through"],
          ["cereal", "serial"],
          ["desert", "dessert"],
